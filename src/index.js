@@ -28,7 +28,6 @@ function createFullRow(max) {
 
 /**
  * Checks if the only one value in row is missing.
- * By default, value by index i is i + 1;
  * @param row an array representing row (can be column) with values
  * @returns {*} reference to the same row
  */
@@ -75,3 +74,4 @@ function retrieveColumn(matrix, ind) {
 
     return result;
 }
+

@@ -1,0 +1,39 @@
+﻿Sudoku solution points
+
+A good name for the methods:
+	complete row
+	complete column
+	complete square
+	exclude numbers
+	
+	
+	
+	
+	
+	
+	
+	working with cells
+	what I need:
+		exclude given value from a given 
+			square
+			row
+			column
+			=> mentioned above is done after every retrieval of a new value for a particular cell, is it's needed anyway
+		
+		
+	
+	square index of row (squareNum) = squareNum - squareNum %3
+	f(x)   index   row number
+	f(1) = 0       1
+	f(2) = 0       1
+	f(3) = 0       1
+	f(4) = 3       4  
+	f(5) = 3       4 
+	f(6) = 3       4  
+	f(7) = 6       7
+	f(8) = 6       7
+	f(9) = 6       7
+	
+	3*Math.floor((x-1)/3)
+	
+					 
