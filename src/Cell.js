@@ -16,6 +16,7 @@ function SudokuCell(value, indOfRow, indOfCol) {
 
     this.setValue = function(val) {
         cellValue = val;
+		possibles = cellValue > 0 ? [] : [1,2,3,4,5,6,7,8,9];
     };
 
     this.isEmpty = function() {
@@ -64,6 +65,24 @@ function SudokuCell(value, indOfRow, indOfCol) {
         possiblesArr.forEach(possible => this.removePossible(possible));
     };
 
+	this.clone = function(){
+		return new SudokuCell(this.getValue(), this.getIndexOfRow(), this.getIndexOfCol());;
+	};
+
+	this.isEqualToCell = function(anotherCell) {
+		var valuesAreEqual = this.getValue() == anotherCell.getValue(),
+			thisPossies = this.getPossibles(),
+			thatPossies = anotherCell.getPossibles(),
+			possibilitiesAreEqual = thisPossies.length == thatPossies.length;
+			thisPossies.forEach(value => {
+				if (thatPossies.indexOf(value) == -1) {
+					possibilitiesAreEqual = false;
+				}
+			});
+		return valuesAreEqual && possibilitiesAreEqual;
+
+	};
+
     // calculate square number
     (function(asThis){
 
@@ -82,19 +101,27 @@ function SudokuCell(value, indOfRow, indOfCol) {
     })(this);
 
 
+
+
 }
 
 
 
-function SudokuMatrix(sqrArrOfValues) {
+function SudokuMatrix(sqrArrOfValues_OR_arr_ofCells) {
     var cellsAsArray = [];
 
-    for (var indOfRow = 0; indOfRow < sqrArrOfValues.length; indOfRow ++) {
-        for (var indOfCol = 0; indOfCol < sqrArrOfValues.length; indOfCol++) {
-            var val = sqrArrOfValues[indOfRow][indOfCol];
-            cellsAsArray.push(new SudokuCell(val, indOfRow, indOfCol));
-        }
-    }
+	if (sqrArrOfValues_OR_arr_ofCells[0] instanceof SudokuCell) {
+		cellsAsArray = sqrArrOfValues_OR_arr_ofCells;
+	} else {
+		for (var indOfRow = 0; indOfRow < sqrArrOfValues_OR_arr_ofCells.length; indOfRow ++) {
+			for (var indOfCol = 0; indOfCol < sqrArrOfValues_OR_arr_ofCells.length; indOfCol++) {
+				var val = sqrArrOfValues_OR_arr_ofCells[indOfRow][indOfCol];
+				cellsAsArray.push(new SudokuCell(val, indOfRow, indOfCol));
+			}
+		}
+	}
+
+
 
     this.getCell = function(rowNum, colNum) {
       return cellsAsArray.filter(cell => (cell.getIndexOfRow() == rowNum -1) && (cell.getIndexOfCol() == colNum-1)).pop();
@@ -177,10 +204,46 @@ function SudokuMatrix(sqrArrOfValues) {
 
     this.logCellPossibles = function(rowNum, colNum) {
         console.log(this.getCell(rowNum, colNum).getPossibles());
-    }
+    };
 
 
 
+	this.clone = function() {
+		var copyOfCellsAsArray = [];
+		for (var i in cellsAsArray) {
+			var thisCell = cellsAsArray[i],
+				newCell = thisCell.clone();
+//			console.log("cloning matrix, this cell: " + thisCell.getValue(), thisCell.getIndexOfRow(), thisCell.getIndexOfCol(), "new cell: ", newCell.getValue());
+			copyOfCellsAsArray.push(newCell);
+		}
+		return new SudokuMatrix(copyOfCellsAsArray);
+	};
+
+	this.getCells = function() {
+		var copyOfCells = [];
+		cellsAsArray.forEach(cell => copyOfCells.push(cell.clone()));
+		return copyOfCells;
+	};
+
+	this.isEqualToMatrix = function(anotherMatrix) {
+		var thisCells = this.getCells(),
+			thatCells = anotherMatrix.getCells(),
+			lengthsAreEqual = thisCells.length == thatCells.length,
+			result = true;
+		if (lengthsAreEqual) {
+			thisCells.forEach(cell => {
+				var anotherCell = anotherMatrix.getCell(cell.getRowNumber(), cell.getColumnNumber());
+				if( !(cell.isEqualToCell( anotherCell )) ) {
+					result = false;
+//					console.log("cells are not equal");
+//					console.log("this cell, value ", cell.getValue(), " rowIndex ", cell.getIndexOfRow(), " col index ", cell.getIndexOfCol(), "possibles ", cell.getPossibles());
+//					console.log("that cell, value ", anotherCell.getValue(), " rowIndex ", anotherCell.getIndexOfRow(), " col index ", anotherCell.getIndexOfCol(), "possibles ", anotherCell.getPossibles());
+
+				}
+			});
+		}
+		return result;
+	};
 
 
 
@@ -188,29 +251,50 @@ function SudokuMatrix(sqrArrOfValues) {
 
 function SudokuSolver(valuesMatrix) {
     var matrix = new SudokuMatrix(valuesMatrix);
+	var result;
+	var before = matrix.clone();
 
-    removeExistingValuesFromPossiblesCells();
-    matrix.updateAllCells();
+	(function(){
+//		console.log("checking matrix");
+		var hasChanges = true;
+		for (var ii = 0; ii < 500; ii++) {
+//			console.log(ii);
+			var after = removeExistingValuesFromPossiblesCells(before.clone());
+			after.updateAllCells();
+			hasChanges = before.isEqualToMatrix(after);
+			before = after.clone();
+			if (!hasChanges) {
+				console.log("no changes detected, stopping");
+				result = after;
+				break;
+			} else if (i == 499) {
+				console.log("too many iterations with no success, stopping");
+			}
+		}
 
-    matrix.getEmptyCellsFromMatrix().forEach(cell => console.log(cell.getPossibles()));
+	})();
 
 
 
-    function removeExistingValuesFromPossiblesCells() {
-        var valued = matrix.getValuedCellsFromMatrix();
+//    matrix.getEmptyCellsFromMatrix().forEach(cell => console.log(cell.getPossibles()));
+
+
+
+    function removeExistingValuesFromPossiblesCells(mtrx) {
+        var valued = mtrx.getValuedCellsFromMatrix();
         valued.forEach(valuedCell => {
             var colNum = valuedCell.getColumnNumber(),
                 rowNum = valuedCell.getRowNumber(),
                 squareNum = valuedCell.getSquareNum(),
                 value = valuedCell.getValue();
-            matrix.removePossibleFromColumn(colNum, value);
-            matrix.removePossibleFromRow(rowNum, value);
-            matrix.removePossibleFromSquare(squareNum, value);
+			mtrx.removePossibleFromColumn(colNum, value);
+			mtrx.removePossibleFromRow(rowNum, value);
+			mtrx.removePossibleFromSquare(squareNum, value);
         });
-
+		return mtrx;
     }
 
-    return matrix;
+    return result;
 }
 
 
@@ -238,8 +322,21 @@ var toSolve2 = [
     [1, 6, 5, 3, 9, 0, 4, 7, 0]
 ];
 
-solution = new SudokuSolver(toSolve2);
-solution.logValues();
+//solution = new SudokuSolver(toSolve2);
+//solution.logValues();
+
+//m1 = new SudokuMatrix(toSolve1);
+//m1.logValues();
+solved = new SudokuSolver(toSolve2);
+solved.logValues();
+//m2 = m1.clone();
+//m1.logValues();
+//console.log("second values");
+//m2.logValues();
+//console.log("are equal: ", m1.isEqualToMatrix(m2));
+//console.log("changing possibles in m2");
+//m2.getCell(1,9).removePossibles([1,2,3,4,5,6,7]);
+//console.log("are equal: ", m1.isEqualToMatrix(m2));
 
 //solution.logCellPossibles(1,8);
 //solution.logCellPossibles(1,9);
