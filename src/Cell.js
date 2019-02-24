@@ -48,6 +48,18 @@ var toSolve3 = [
 	[1, 6, 7, 0, 0, 2, 5, 4, 0]
 ];
 
+var toSolve3_modified = [
+	[0, 5, 0, 0, 7, 0, 0, 2, 1],
+	[8, 7, 6, 0, 2, 1, 9, 0, 3],
+	[0, 0, 0, 0, 3, 5, 0, 0, 6],
+	[0, 0, 0, 0, 4, 3, 6, 1, 0],
+	[0, 4, 0, 0, 0, 9, 0, 0, 2],
+	[0, 1, 2, 0, 5, 0, 0, 0, 4],
+	[0, 8, 9, 0, 6, 4, 0, 0, 0],
+	[0, 0, 0, 0, 0, 7, 0, 0, 0],
+	[1, 6, 7, 0, 0, 2, 5, 4, 0]
+];
+
 var toSolve4 = [
 	[0, 0, 0, 9, 3, 8, 0, 4, 0],
 	[0, 0, 0, 7, 6, 0, 0, 0, 2],
@@ -86,7 +98,7 @@ var veryHard = [
 
 //console.log(new SudokuMatrix(toSolve1).isEqualToMatrix(new SudokuMatrix(toSolve2)));
 
-toSolve = toSolveInExample;
+toSolve = toSolve3_modified;
 
 solved = new SudokuSolver(toSolve).solve().getSolution();
 initialInput = new SudokuMatrix(toSolve);
@@ -97,6 +109,7 @@ console.log('=======Initial=======');
 initialInput.logValues();
 console.log('=======Result=======');
 solved.logValues();
+solved.logCellPossibles(1,7);
 
 
 // ================================================================================================
