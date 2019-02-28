@@ -98,18 +98,26 @@ var veryHard = [
 
 //console.log(new SudokuMatrix(toSolve1).isEqualToMatrix(new SudokuMatrix(toSolve2)));
 
-toSolve = toSolve3_modified;
-
-solved = new SudokuSolver(toSolve).solve().getSolution();
+toSolve = toSolve3;
+solver = new SudokuSolver(toSolve).solve()
+solved = solver.getSolution();
 initialInput = new SudokuMatrix(toSolve);
 
-console.log("changes? " + !solved.isEqualToMatrix(initialInput));
+    console.log("changes? " + !solved.isEqualToMatrix(initialInput));
 //
-console.log('=======Initial=======');
-initialInput.logValues();
-console.log('=======Result=======');
-solved.logValues();
-solved.logCellPossibles(1,7);
+    console.log('=======Initial=======');
+    initialInput.logValues();
+    console.log('=======Result=======');
+    solved.logValues();
+    console.log("Possibilities ↓");
+    for (var rowNum = 1; rowNum <=9; rowNum++) {
+        var row = solved.getRowByNumber(rowNum);
+        row.sort((a, b) => a.getColumnNumber() < b.getColumnNumber);
+        var output = row.reduce((acc, cell) => acc += "|" + cell.getPossibles() + "\t\t\t\t\t" + (cell.getPossibles().length == 0 ? "\t" : ''), 'Row ' + rowNum + "\t\t");
+        console.log(output);
+    }
+console.log("possibles for 5 3:", solved.getCell(5, 3).getPossibles());
+
 
 
 // ================================================================================================
@@ -126,14 +134,88 @@ function SudokuSolver(valuesMatrix) {
 		return solution;
 	};
 
-	this.solve = function(){
-		solution = (function(){
+
+
+    function hasValidEmptyCells(_matrix) {
+        var cells = _matrix.getCells().filter(cell => cell.isEmpty() && (cell.getPossibles().length > 0));
+        return cells.length > 0;
+    }
+
+    function hasInvalidEmptyCells(_matrix) {
+        var cells = _matrix.getCells().filter(cell => cell.isEmpty() && (cell.getPossibles().length == 0));
+        return (cells.length > 0);
+    }
+
+
+
+    function allCellsAreFilled (_matrix) {
+        var cells = _matrix.getCells().filter(cell => cell.isEmpty());
+        return cells.length == 0;
+    }
+
+    function solveRecursively() {
+
+        var cloned = solution.clone();
+        if (allCellsAreFilled(cloned)){
+            console.log("Matrix is filled");
+            return solution;
+        }
+
+        if (hasInvalidEmptyCells(cloned)) {
+            console.log("nothing");
+            return null;
+        }
+
+        // because matrix is used by solveByLogc(), we must set it as current solution
+        // it's cloned because matrix will be changed and we must go back to the previous version in case of failure
+        matrix = cloned.clone();
+
+        var emptyCells = cloned.getCells().filter(cell => cell.isEmpty()).sort((a, b) => (a.getPossibles().length < b.getPossibles.length) );
+
+        for (var i = 0; i < emptyCells.length; i++) {
+            var empty = emptyCells[i],
+                row = empty.getRowNumber(),
+                col = empty.getColumnNumber(),
+                possibles = empty.getPossibles();
+            for (var j = 0; j < possibles.length; j++) {
+                matrix._setCellValue(row, col, possibles[j]);
+                this.solveByLogic();
+            }
+
+        }
+
+
+
+    }
+
+    this.solve = function () {
+        solution = this.solveByLogic();
+        console.log("checking if solved");
+        var solved = allCellsAreFilled(solution);
+        if (solved) {
+            console.log("solved!");
+        } else {
+            /*
+            Идея. Перебирать возможные значения каждой пустой ячейки, при этом после вбивания значения применять обычные подходы
+             */
+            var beforeBruteforcing = this.getSolution().clone();
+
+
+        }
+
+
+
+
+        return this;
+    };
+
+	this.solveByLogic = function(mtrx){
+		var toReturn = (function(inputMatrix){
 
 			var hasChanges = true;
-			var before = matrix.clone();
+			var before = inputMatrix.clone();
 			var max = 500;
 			for (var ii = 0; ii < max; ii++) {
-//			console.log(ii);
 				var after = before.clone();
 
 
@@ -150,17 +232,18 @@ function SudokuSolver(valuesMatrix) {
 				hasChanges = !isEqual;
 				before = after;
 				if (!hasChanges) {
-//				console.log("no changes detected, stopping at iteration " + ii);
-					return after;
+                    console.log("could not solve by logic");
+                    return after;
+
 				} else if (ii +1 == max) {
-//				console.log("too many iterations with no success, stopping at iteration " + ii, "after is instance of sudoku matrix: " + (after instanceof  SudokuMatrix));
+				console.log("too many iterations with no success, stopping at iteration " + ii, "after is instance of sudoku matrix: " + (after instanceof  SudokuMatrix));
 					return after;
 
 				}
 			}
 
-		})();
-		return this;
+		})(mtrx || matrix);
+		return toReturn;
 	};
 
 
@@ -302,6 +385,11 @@ function SudokuMatrix(sqrArrOfValues_OR_arr_ofCells) {
 		return cellsAsArray;
 	};
 
+    this.hasEmptyCells = function () {
+        var emptyCells = this.getCells().filter(cell => isEmpty());
+        return emptyCells > 0;
+    };
+
 	this.isEqualToMatrix = function(anotherMatrix, thisMatrixDebugName, anotherMatrixDebugName) {
 		var thisCells = this.getCells(),
 			thatCells = anotherMatrix.getCells(),
@@ -397,7 +485,7 @@ function SudokuCell(value, indOfRow, indOfCol/*, possibles*/) {
 	};
 
 	this.isEmpty = function() {
-		return cellValue == 0 && possibles.length > 0;
+		return cellValue == 0 /*&& possibles.length > 0*/;
 	};
 
 	this.update = function() {
