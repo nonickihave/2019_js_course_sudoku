@@ -1,11 +1,10 @@
 module.exports = function solveSudoku(matrix) {
   // your solution
-    return new SudokuSolver(matrix).solve().getSolution().toValuesArray();
+
+	var solver = new SudokuSolver(matrix);
+	return solver.solve().getSolution().toValuesArray();
+
 };
-
-
-
-
 
 function SudokuSolver(valuesMatrix) {
 	var matrix = new SudokuMatrix(valuesMatrix);
@@ -16,14 +15,115 @@ function SudokuSolver(valuesMatrix) {
 		return solution;
 	};
 
-	this.solve = function(){
-		solution = (function(){
+
+
+	function hasValidEmptyCells(_matrix) {
+		var cells = _matrix.getCells().filter(cell => cell.isEmpty() && (cell.getPossibles().length > 0));
+		return cells.length > 0;
+	}
+
+	function hasInvalidEmptyCells(_matrix) {
+		var cells = _matrix.getCells().filter(cell => cell.isEmpty() && (cell.getPossibles().length == 0));
+		return (cells.length > 0);
+	}
+
+
+
+	function allCellsAreFilled (_matrix) {
+		var cells = _matrix.getCells().filter(cell => cell.isEmpty());
+		return cells.length == 0;
+	}
+
+	function solveRecursively (inputMtrx, asThis, level) {
+
+		if (allCellsAreFilled(inputMtrx)){
+			return inputMtrx;
+		}
+
+		if (hasInvalidEmptyCells(inputMtrx)) {
+			return null;
+		}
+
+		var cloned = inputMtrx.clone();
+		// because matrix is used by solveByLogc(), we must set it as current solution
+		// it's cloned because matrix will be changed and we must go back to the previous version in case of failure
+
+		var emptyCells = inputMtrx.getCells().filter(cell => cell.isEmpty()).sort((a, b) => (a.getPossibles().length - b.getPossibles().length) );
+
+
+		for (var i = 0; i < emptyCells.length; i++) {
+//			logIfLevelOne(level, "before iteration amount of empty cells is :" + emptyCells.length);
+
+			var empty = emptyCells[i],
+				row = empty.getRowNumber(),
+				col = empty.getColumnNumber(),
+				possibles = empty.getPossibles();
+
+
+			for (var j = 0; j < possibles.length; j++) {
+				var fuckingPossible = possibles[j];
+
+				cloned = inputMtrx.clone();
+				cloned._setCellValue(row, col, fuckingPossible);
+				// solve by logic changes objects inside of the matrix
+				// because we want to go back to prev value and try the other possibles, we clone it
+				var solvedByLogic = asThis.solveByLogic(cloned.clone());
+				var solvedRecursively = solveRecursively(solvedByLogic, asThis, (level + 1));
+
+				if (solvedRecursively === undefined) {
+
+					return null;
+				} else
+				if (solvedRecursively !== null) {
+					return solvedRecursively;
+				} else {
+					if (level = 1) {
+					}
+					cloned._setCellValue(row, col, 0);
+				}
+			}
+
+
+		}
+
+		console.log("this string means that by mistake the value wasn't returned correctly at level " + level + ", returning null");
+		return null;
+
+
+	}
+
+	this.solve = function () {
+		solution = this.solveByLogic();
+		var solved = allCellsAreFilled(solution);
+		if (solved) {
+		} else {
+			/*
+			 Идея. Перебирать возможные значения каждой пустой ячейки, при этом после вбивания значения применять обычные подходы
+			 */
+//            var beforeBruteforcing = this.getSolution().clone();
+			var recursively = solveRecursively(solution, this, 1);
+			if (recursively == null) {
+				return solution;
+			} else {
+				solution = recursively;
+			}
+
+		}
+
+
+
+
+		return this;
+	};
+
+	this.solveByLogic = function(mtrxx){
+//		console.log("solving by logic. Input matrix is undefined: " + (mtrxx === undefined));
+		var toReturn = (function(inputMatrixx){
 
 			var hasChanges = true;
-			var before = matrix.clone();
+			var before = inputMatrixx.clone();
 			var max = 500;
 			for (var ii = 0; ii < max; ii++) {
-//			console.log(ii);
 				var after = before.clone();
 
 
@@ -40,17 +140,18 @@ function SudokuSolver(valuesMatrix) {
 				hasChanges = !isEqual;
 				before = after;
 				if (!hasChanges) {
-//				console.log("no changes detected, stopping at iteration " + ii);
+//                    console.log("could not solve by logic");
 					return after;
+
 				} else if (ii +1 == max) {
-//				console.log("too many iterations with no success, stopping at iteration " + ii, "after is instance of sudoku matrix: " + (after instanceof  SudokuMatrix));
+					console.log("too many iterations with no success, stopping at iteration " + ii, "after is instance of sudoku matrix: " + (after instanceof  SudokuMatrix));
 					return after;
 
 				}
 			}
 
-		})();
-		return this;
+		})((mtrxx !== null && mtrxx !== undefined) ? mtrxx : matrix);
+		return toReturn;
 	};
 
 
@@ -192,6 +293,11 @@ function SudokuMatrix(sqrArrOfValues_OR_arr_ofCells) {
 		return cellsAsArray;
 	};
 
+	this.hasEmptyCells = function () {
+		var emptyCells = this.getCells().filter(cell => isEmpty());
+		return emptyCells > 0;
+	};
+
 	this.isEqualToMatrix = function(anotherMatrix, thisMatrixDebugName, anotherMatrixDebugName) {
 		var thisCells = this.getCells(),
 			thatCells = anotherMatrix.getCells(),
@@ -245,11 +351,24 @@ function SudokuMatrix(sqrArrOfValues_OR_arr_ofCells) {
 		console.log("-------------------");
 	};
 
+	this.logPossibles = function () {
+		this.forEachRow(row => {
+			row.sort((a, b) => a.getColumnNumber() - b.getColumnNumber());
+			var str = row.reduce((acc, cell) => {
+				var ps = cell.getPossibles().length > 0 ? cell.getPossibles() : "-";
+				var coordinates = "^"+ cell.getRowNumber() + "^" + cell.getColumnNumber() +"^: ";
+				acc += coordinates + ps + "|\t\t\t\t\t\t";
+				return acc;
+			}, "");
+			console.log(str);
+		})
+	};
+
 	this.toValuesArray = function () {
 		var result = [];
 		for (var i = 1; i <= 9; i++) {
 			var row = this.getRowByNumber(i);
-			row.sort((a,b) => a.getColumnNumber() - b.getColumnNumber);
+			row.sort((a,b) => a.getColumnNumber() - b.getColumnNumber());
 			var values = row.map(cell => cell.getValue());
 			result.push(values);
 		}
@@ -287,7 +406,7 @@ function SudokuCell(value, indOfRow, indOfCol/*, possibles*/) {
 	};
 
 	this.isEmpty = function() {
-		return cellValue == 0 && possibles.length > 0;
+		return cellValue == 0 /*&& possibles.length > 0*/;
 	};
 
 	this.update = function() {
@@ -481,7 +600,7 @@ function SolverUtil  () {
 	};
 
 	function cellsBelongToTheSameSquare(cells) {
-//		console.log("checking beloning to the same square");
+
 		var belong = true,
 			squareNum = cells[0].getSquareNum();
 		cells.forEach(cell => {
@@ -492,3 +611,5 @@ function SolverUtil  () {
 
 
 };
+
+
